@@ -48,7 +48,7 @@ The two strategy reviewer agents (`.claude/agents/strategy-reviewer-pm.md` and `
 
 ### 4. Set up Google Workspace (optional)
 
-The `gcloud` skill requires the `gws` CLI for Gmail, Calendar, and Drive access. See `.claude/skills/gcloud/SKILL.md` for setup instructions.
+The `gcloud` skill requires the `gws` CLI for Gmail, Calendar, and Drive access. See `.claude/skills/gcloud/SKILL.md` for setup instructions, and the [Troubleshooting: Google Workspace setup](#troubleshooting-google-workspace-setup-grafana) section below if you hit OAuth errors.
 
 ### 5. Open as an Obsidian vault (optional)
 
@@ -92,3 +92,90 @@ claude --dir /path/to/your/vault
 ```
 
 `CLAUDE.md` is auto-loaded into every conversation. Slash commands in `.claude/commands/` are available immediately as `/command-name`.
+
+---
+
+## Troubleshooting: Google Workspace setup (Grafana)
+
+This fixes the common setup failure where `gws` or the gcloud skill cannot auto-create an OAuth client in `grafanalabs-dev` because that project has hit its OAuth client limit.
+
+### Symptoms
+
+You may see errors like:
+
+- `Access denied. No credentials provided. Run gws auth login`
+- `No OAuth client configured yet`
+- `Auto-setup can't create OAuth clients on grafanalabs-dev`
+- `The project has reached the limit of 36 OAuth clients`
+
+### Recommended workaround
+
+Instead of trying to use `grafanalabs-dev`, create your own GCP project under the `sandbox` parent and do the OAuth setup manually in the GCP UI.
+
+### Steps
+
+1. **Create a new GCP project**
+   - Create a new project under the **sandbox** parent project.
+   - Do this in the **Google Cloud UI**, not via CLI.
+
+2. **Enable a Google Workspace API**
+   - In your new project, go to **APIs**.
+   - Open **Library** or **Add new**.
+   - Enable at least one Google Workspace API, such as:
+     - **Drive API**
+     - **Docs API**
+
+3. **Create an OAuth client**
+   - Go to **Credentials**.
+   - Click **Create credentials**.
+   - Choose **OAuth Client ID**.
+   - Use:
+     - **Application type:** `Desktop app`
+     - **User type:** `External`
+     - **Name:** anything you want
+
+4. **Generate and save the client secret**
+   - Open the new OAuth client.
+   - Click **Add secret**.
+   - Save the downloaded OAuth JSON file locally.
+
+5. **Add yourself as a test user**
+   - In the left navigation, open **Audience**.
+   - Scroll to **Test users**.
+   - Add your `@grafana.com` email address.
+
+6. **Enable any other APIs you need**
+   - Return to the API Library.
+   - Enable additional Google Workspace APIs as needed.
+   - You should not need to repeat the full OAuth client setup each time.
+
+7. **Authenticate from the terminal**
+   - Run:
+     ```bash
+     gws auth login
+     ```
+   - If needed, use `-s` to restrict scopes to a smaller set, such as only Drive.
+
+8. **Complete the browser auth flow**
+   - If your environment can open a browser, complete auth normally.
+   - Otherwise, copy-paste the login URL manually.
+   - If you get a **404** after authorizing, copy the final 404 URL and curl it from the terminal to complete the redirect.
+
+9. **Configure gws to use your new project**
+   - If the tool still points at `grafanalabs-dev`, reconfigure it to use the new sandbox project instead.
+
+### Notes
+
+- The main blocker is not Drive itself; it is usually the **OAuth client creation** step.
+- The key fix is using a **new sandbox project** instead of `grafanalabs-dev`.
+- One person in the thread also noted that using the new project made it easier for `gws` to enable the larger set of Google APIs it wanted.
+
+### TL;DR
+
+- Create a new project under **sandbox**
+- Enable **Drive API** or another Workspace API
+- Create a **Desktop app** OAuth client with **External** user type
+- Download the client secret JSON
+- Add yourself under **Audience > Test users**
+- Run `gws auth login`
+- Point `gws` at the new project if needed
