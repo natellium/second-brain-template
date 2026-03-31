@@ -1,0 +1,14 @@
+# Personal vault content
+.claude/settings.local.json
+
+# Obsidian machine-specific state
+.obsidian/workspace.json
+.obsidian/workspace-mobile.json
+
+# macOS
+.DS_Store
+
+# Environment files (precautionary)
+.env
+.env.*
+*.env
